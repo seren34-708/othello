@@ -30,11 +30,95 @@
             width: 100%;
         }
 
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
         h1 {
             text-align: center;
             color: #333;
             margin-bottom: 15px;
             font-size: clamp(1.5em, 5vw, 2em);
+        }
+
+        h2 {
+            text-align: center;
+            color: #555;
+            margin-bottom: 20px;
+            font-size: clamp(1.2em, 4vw, 1.5em);
+        }
+
+        .mode-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .mode-btn {
+            padding: 20px;
+            font-size: clamp(1em, 3vw, 1.2em);
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .mode-btn:active {
+            transform: translateY(0);
+        }
+
+        .difficulty-selection {
+            margin: 20px 0;
+        }
+
+        .difficulty-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .difficulty-btn {
+            padding: 15px 10px;
+            font-size: clamp(0.9em, 2.5vw, 1em);
+            font-weight: bold;
+            background: #f0f0f0;
+            color: #666;
+            border: 3px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .difficulty-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .difficulty-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #5568d3;
+        }
+
+        .difficulty-label {
+            display: block;
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-top: 5px;
         }
 
         .language-toggle {
@@ -172,6 +256,10 @@
         .controls {
             margin-top: 20px;
             text-align: center;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
         button {
@@ -196,6 +284,14 @@
             transform: translateY(0);
         }
 
+        button.secondary {
+            background: #95a5a6;
+        }
+
+        button.secondary:hover {
+            background: #7f8c8d;
+        }
+
         .message {
             text-align: center;
             margin-top: 15px;
@@ -208,6 +304,11 @@
         .score {
             font-size: 1.2em;
             color: #667eea;
+        }
+
+        .thinking {
+            color: #f39c12;
+            font-style: italic;
         }
 
         /* Mobile-specific adjustments */
@@ -232,36 +333,96 @@
             .message {
                 margin-top: 10px;
             }
+
+            .difficulty-grid {
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 id="title">🎮 オセロ</h1>
-        
-        <div class="language-toggle">
-            <button class="lang-btn active" onclick="setLanguage('ja')">日本語</button>
-            <button class="lang-btn" onclick="setLanguage('en')">English</button>
-        </div>
-        
-        <div class="info-bar">
-            <div class="player-info" id="blackInfo">
-                <div class="piece-preview black-piece"></div>
-                <span><span id="blackLabel">黒</span>: <span class="score" id="blackScore">2</span></span>
+        <!-- Mode Selection Screen -->
+        <div id="modeScreen" class="screen active">
+            <h1 id="titleMode">🎮 オセロ</h1>
+            
+            <div class="language-toggle">
+                <button class="lang-btn active" onclick="setLanguage('ja')">日本語</button>
+                <button class="lang-btn" onclick="setLanguage('en')">English</button>
             </div>
-            <div class="player-info" id="whiteInfo">
-                <div class="piece-preview white-piece"></div>
-                <span><span id="whiteLabel">白</span>: <span class="score" id="whiteScore">2</span></span>
+
+            <h2 id="selectModeTitle">対戦モードを選択</h2>
+
+            <div class="mode-selection">
+                <button class="mode-btn" onclick="selectMode('pvp')" id="pvpBtn">
+                    👥 2人対戦
+                </button>
+                <button class="mode-btn" onclick="selectMode('ai')" id="aiBtn">
+                    🤖 コンピューター対戦
+                </button>
             </div>
         </div>
 
-        <div class="board" id="board"></div>
-        
-        <div class="controls">
-            <button onclick="resetGame()" id="newGameBtn">新しいゲーム</button>
+        <!-- Difficulty Selection Screen -->
+        <div id="difficultyScreen" class="screen">
+            <h1 id="titleDifficulty">🎮 オセロ</h1>
+            
+            <h2 id="selectDifficultyTitle">難易度を選択</h2>
+
+            <div class="difficulty-selection">
+                <div class="difficulty-grid">
+                    <button class="difficulty-btn" onclick="selectDifficulty(1)" data-level="1">
+                        <div id="level1Name">初級</div>
+                        <span class="difficulty-label">⭐</span>
+                    </button>
+                    <button class="difficulty-btn" onclick="selectDifficulty(2)" data-level="2">
+                        <div id="level2Name">中級</div>
+                        <span class="difficulty-label">⭐⭐</span>
+                    </button>
+                    <button class="difficulty-btn" onclick="selectDifficulty(3)" data-level="3">
+                        <div id="level3Name">上級</div>
+                        <span class="difficulty-label">⭐⭐⭐</span>
+                    </button>
+                    <button class="difficulty-btn" onclick="selectDifficulty(4)" data-level="4">
+                        <div id="level4Name">エキスパート</div>
+                        <span class="difficulty-label">⭐⭐⭐⭐</span>
+                    </button>
+                    <button class="difficulty-btn" onclick="selectDifficulty(5)" data-level="5">
+                        <div id="level5Name">マスター</div>
+                        <span class="difficulty-label">⭐⭐⭐⭐⭐</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="secondary" onclick="backToModeSelect()" id="backBtn">戻る</button>
+            </div>
         </div>
-        
-        <div class="message" id="message">黒の番です</div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <h1 id="titleGame">🎮 オセロ</h1>
+            
+            <div class="info-bar">
+                <div class="player-info" id="blackInfo">
+                    <div class="piece-preview black-piece"></div>
+                    <span><span id="blackLabel">黒</span>: <span class="score" id="blackScore">2</span></span>
+                </div>
+                <div class="player-info" id="whiteInfo">
+                    <div class="piece-preview white-piece"></div>
+                    <span><span id="whiteLabel">白</span>: <span class="score" id="whiteScore">2</span></span>
+                </div>
+            </div>
+
+            <div class="board" id="board"></div>
+            
+            <div class="controls">
+                <button onclick="resetGame()" id="newGameBtn">新しいゲーム</button>
+                <button class="secondary" onclick="backToModeSelect()" id="backToMenuBtn">メニューに戻る</button>
+            </div>
+            
+            <div class="message" id="message">黒の番です</div>
+        </div>
     </div>
 
     <script>
@@ -274,10 +435,24 @@
         let currentPlayer = BLACK;
         let gameOver = false;
         let currentLanguage = 'ja';
+        let gameMode = null; // 'pvp' or 'ai'
+        let aiDifficulty = 3; // 1-5
+        let isAIThinking = false;
 
         const translations = {
             ja: {
-                title: '🎮 オセロ',
+                titleMode: '🎮 オセロ',
+                titleGame: '🎮 オセロ',
+                titleDifficulty: '🎮 オセロ',
+                selectMode: '対戦モードを選択',
+                selectDifficulty: '難易度を選択',
+                pvpMode: '👥 2人対戦',
+                aiMode: '🤖 コンピューター対戦',
+                level1: '初級',
+                level2: '中級',
+                level3: '上級',
+                level4: 'エキスパート',
+                level5: 'マスター',
                 black: '黒',
                 white: '白',
                 blackTurn: '黒の番です',
@@ -285,10 +460,24 @@
                 blackWins: 'ゲーム終了！ 黒の勝ち！',
                 whiteWins: 'ゲーム終了！ 白の勝ち！',
                 draw: 'ゲーム終了！ 引き分け！',
-                newGame: '新しいゲーム'
+                newGame: '新しいゲーム',
+                backToMenu: 'メニューに戻る',
+                back: '戻る',
+                aiThinking: 'コンピューターが考え中...'
             },
             en: {
-                title: '🎮 Othello',
+                titleMode: '🎮 Othello',
+                titleGame: '🎮 Othello',
+                titleDifficulty: '🎮 Othello',
+                selectMode: 'Select Game Mode',
+                selectDifficulty: 'Select Difficulty',
+                pvpMode: '👥 Player vs Player',
+                aiMode: '🤖 vs Computer',
+                level1: 'Beginner',
+                level2: 'Intermediate',
+                level3: 'Advanced',
+                level4: 'Expert',
+                level5: 'Master',
                 black: 'Black',
                 white: 'White',
                 blackTurn: "Black's turn",
@@ -296,7 +485,10 @@
                 blackWins: 'Game Over! Black wins!',
                 whiteWins: 'Game Over! White wins!',
                 draw: 'Game Over! Draw!',
-                newGame: 'New Game'
+                newGame: 'New Game',
+                backToMenu: 'Back to Menu',
+                back: 'Back',
+                aiThinking: 'AI is thinking...'
             }
         };
 
@@ -322,12 +514,38 @@
         function updateLanguage() {
             const t = translations[currentLanguage];
             
-            document.getElementById('title').textContent = t.title;
+            // Mode screen
+            document.getElementById('titleMode').textContent = t.titleMode;
+            document.getElementById('selectModeTitle').textContent = t.selectMode;
+            document.getElementById('pvpBtn').innerHTML = t.pvpMode;
+            document.getElementById('aiBtn').innerHTML = t.aiMode;
+            
+            // Difficulty screen
+            document.getElementById('titleDifficulty').textContent = t.titleDifficulty;
+            document.getElementById('selectDifficultyTitle').textContent = t.selectDifficulty;
+            document.getElementById('level1Name').textContent = t.level1;
+            document.getElementById('level2Name').textContent = t.level2;
+            document.getElementById('level3Name').textContent = t.level3;
+            document.getElementById('level4Name').textContent = t.level4;
+            document.getElementById('level5Name').textContent = t.level5;
+            document.getElementById('backBtn').textContent = t.back;
+            
+            // Game screen
+            document.getElementById('titleGame').textContent = t.titleGame;
             document.getElementById('blackLabel').textContent = t.black;
             document.getElementById('whiteLabel').textContent = t.white;
             document.getElementById('newGameBtn').textContent = t.newGame;
+            document.getElementById('backToMenuBtn').textContent = t.backToMenu;
             
             // Update turn message
+            if (gameMode) {
+                updateTurnMessage();
+            }
+        }
+
+        function updateTurnMessage() {
+            const t = translations[currentLanguage];
+            
             if (gameOver) {
                 const { black, white } = countPieces();
                 if (black > white) {
@@ -337,10 +555,49 @@
                 } else {
                     document.getElementById('message').textContent = t.draw;
                 }
+            } else if (isAIThinking) {
+                document.getElementById('message').innerHTML = '<span class="thinking">' + t.aiThinking + '</span>';
             } else {
                 document.getElementById('message').textContent = 
                     currentPlayer === BLACK ? t.blackTurn : t.whiteTurn;
             }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function selectMode(mode) {
+            gameMode = mode;
+            if (mode === 'ai') {
+                showScreen('difficultyScreen');
+            } else {
+                startGame();
+            }
+        }
+
+        function selectDifficulty(level) {
+            // Update button states
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.closest('.difficulty-btn').classList.add('selected');
+            
+            aiDifficulty = level;
+            startGame();
+        }
+
+        function backToModeSelect() {
+            showScreen('modeScreen');
+            gameMode = null;
+        }
+
+        function startGame() {
+            showScreen('gameScreen');
+            initBoard();
         }
 
         function initBoard() {
@@ -354,6 +611,7 @@
             
             currentPlayer = BLACK;
             gameOver = false;
+            isAIThinking = false;
             
             renderBoard();
             updateInfo();
@@ -372,7 +630,7 @@
                     cell.dataset.row = i;
                     cell.dataset.col = j;
                     
-                    if (validMoves.some(move => move[0] === i && move[1] === j)) {
+                    if (!isAIThinking && validMoves.some(move => move[0] === i && move[1] === j)) {
                         cell.classList.add('valid-move');
                     }
                     
@@ -390,8 +648,15 @@
         }
 
         function handleCellClick(row, col) {
-            if (gameOver || board[row][col] !== EMPTY) return;
+            if (gameOver || board[row][col] !== EMPTY || isAIThinking) return;
             
+            // AI mode: only allow human player (black) to move
+            if (gameMode === 'ai' && currentPlayer === WHITE) return;
+            
+            makeMove(row, col);
+        }
+
+        function makeMove(row, col) {
             const flipped = getFlippedPieces(row, col, currentPlayer);
             if (flipped.length === 0) return;
             
@@ -413,17 +678,202 @@
                 // 両方打てない場合はゲーム終了
                 if (getValidMoves(currentPlayer).length === 0) {
                     gameOver = true;
-                    showGameResult();
+                    renderBoard();
+                    updateInfo();
                     return;
                 }
             }
             
             renderBoard();
             updateInfo();
+            
+            // AI's turn
+            if (gameMode === 'ai' && currentPlayer === WHITE && !gameOver) {
+                aiMove();
+            }
         }
 
-        function getFlippedPieces(row, col, player) {
-            if (board[row][col] !== EMPTY) return [];
+        function aiMove() {
+            isAIThinking = true;
+            updateTurnMessage();
+            renderBoard();
+            
+            // Delay for visual effect
+            const delay = aiDifficulty === 1 ? 300 : aiDifficulty === 2 ? 500 : aiDifficulty === 3 ? 800 : aiDifficulty === 4 ? 1200 : 1500;
+            
+            setTimeout(() => {
+                const move = getBestMove(aiDifficulty);
+                if (move) {
+                    isAIThinking = false;
+                    makeMove(move[0], move[1]);
+                }
+            }, delay);
+        }
+
+        function getBestMove(difficulty) {
+            const validMoves = getValidMoves(WHITE);
+            if (validMoves.length === 0) return null;
+            
+            if (difficulty === 1) {
+                // Beginner: Random move
+                return validMoves[Math.floor(Math.random() * validMoves.length)];
+            } else if (difficulty === 2) {
+                // Intermediate: Prefer corners, avoid X-squares, otherwise random
+                const corners = validMoves.filter(([r, c]) => 
+                    (r === 0 || r === 7) && (c === 0 || c === 7));
+                if (corners.length > 0) {
+                    return corners[Math.floor(Math.random() * corners.length)];
+                }
+                
+                const xSquares = [[0,1],[1,0],[1,1],[0,6],[1,6],[1,7],[6,0],[6,1],[7,1],[6,6],[6,7],[7,6]];
+                const safesMoves = validMoves.filter(([r, c]) => 
+                    !xSquares.some(([xr, xc]) => xr === r && xc === c));
+                
+                if (safesMoves.length > 0) {
+                    return safesMoves[Math.floor(Math.random() * safesMoves.length)];
+                }
+                
+                return validMoves[Math.floor(Math.random() * validMoves.length)];
+            } else if (difficulty === 3) {
+                // Advanced: Maximize flipped pieces
+                let bestMove = validMoves[0];
+                let maxFlipped = getFlippedPieces(bestMove[0], bestMove[1], WHITE).length;
+                
+                for (const move of validMoves) {
+                    const flipped = getFlippedPieces(move[0], move[1], WHITE).length;
+                    if (flipped > maxFlipped) {
+                        maxFlipped = flipped;
+                        bestMove = move;
+                    }
+                }
+                
+                return bestMove;
+            } else if (difficulty === 4) {
+                // Expert: Minimax with depth 2
+                return minimaxMove(2);
+            } else {
+                // Master: Minimax with depth 3
+                return minimaxMove(3);
+            }
+        }
+
+        function minimaxMove(depth) {
+            const validMoves = getValidMoves(WHITE);
+            let bestMove = validMoves[0];
+            let bestScore = -Infinity;
+            
+            for (const move of validMoves) {
+                const newBoard = copyBoard();
+                const flipped = getFlippedPieces(move[0], move[1], WHITE);
+                newBoard[move[0]][move[1]] = WHITE;
+                flipped.forEach(([r, c]) => newBoard[r][c] = WHITE);
+                
+                const score = minimax(newBoard, depth - 1, false, -Infinity, Infinity);
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+            
+            return bestMove;
+        }
+
+        function minimax(testBoard, depth, isMaximizing, alpha, beta) {
+            if (depth === 0) {
+                return evaluateBoard(testBoard);
+            }
+            
+            const player = isMaximizing ? WHITE : BLACK;
+            const moves = getValidMovesForBoard(testBoard, player);
+            
+            if (moves.length === 0) {
+                const opponent = player === WHITE ? BLACK : WHITE;
+                const opponentMoves = getValidMovesForBoard(testBoard, opponent);
+                if (opponentMoves.length === 0) {
+                    return evaluateBoard(testBoard);
+                }
+                return minimax(testBoard, depth - 1, !isMaximizing, alpha, beta);
+            }
+            
+            if (isMaximizing) {
+                let maxScore = -Infinity;
+                for (const move of moves) {
+                    const newBoard = copyBoardFrom(testBoard);
+                    const flipped = getFlippedPiecesForBoard(newBoard, move[0], move[1], player);
+                    newBoard[move[0]][move[1]] = player;
+                    flipped.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const score = minimax(newBoard, depth - 1, false, alpha, beta);
+                    maxScore = Math.max(maxScore, score);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
+                }
+                return maxScore;
+            } else {
+                let minScore = Infinity;
+                for (const move of moves) {
+                    const newBoard = copyBoardFrom(testBoard);
+                    const flipped = getFlippedPiecesForBoard(newBoard, move[0], move[1], player);
+                    newBoard[move[0]][move[1]] = player;
+                    flipped.forEach(([r, c]) => newBoard[r][c] = player);
+                    
+                    const score = minimax(newBoard, depth - 1, true, alpha, beta);
+                    minScore = Math.min(minScore, score);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return minScore;
+            }
+        }
+
+        function evaluateBoard(testBoard) {
+            const weights = [
+                [100, -20, 10,  5,  5, 10, -20, 100],
+                [-20, -50, -2, -2, -2, -2, -50, -20],
+                [ 10,  -2, 10,  1,  1, 10,  -2,  10],
+                [  5,  -2,  1,  1,  1,  1,  -2,   5],
+                [  5,  -2,  1,  1,  1,  1,  -2,   5],
+                [ 10,  -2, 10,  1,  1, 10,  -2,  10],
+                [-20, -50, -2, -2, -2, -2, -50, -20],
+                [100, -20, 10,  5,  5, 10, -20, 100]
+            ];
+            
+            let score = 0;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (testBoard[i][j] === WHITE) {
+                        score += weights[i][j];
+                    } else if (testBoard[i][j] === BLACK) {
+                        score -= weights[i][j];
+                    }
+                }
+            }
+            return score;
+        }
+
+        function copyBoard() {
+            return board.map(row => [...row]);
+        }
+
+        function copyBoardFrom(sourceBoard) {
+            return sourceBoard.map(row => [...row]);
+        }
+
+        function getValidMovesForBoard(testBoard, player) {
+            const moves = [];
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (getFlippedPiecesForBoard(testBoard, i, j, player).length > 0) {
+                        moves.push([i, j]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function getFlippedPiecesForBoard(testBoard, row, col, player) {
+            if (testBoard[row][col] !== EMPTY) return [];
             
             const opponent = player === BLACK ? WHITE : BLACK;
             const flipped = [];
@@ -434,10 +884,10 @@
                 let c = col + dc;
                 
                 while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-                    if (board[r][c] === EMPTY) break;
-                    if (board[r][c] === opponent) {
+                    if (testBoard[r][c] === EMPTY) break;
+                    if (testBoard[r][c] === opponent) {
                         tempFlipped.push([r, c]);
-                    } else if (board[r][c] === player) {
+                    } else if (testBoard[r][c] === player) {
                         if (tempFlipped.length > 0) {
                             flipped.push(...tempFlipped);
                         }
@@ -451,16 +901,12 @@
             return flipped;
         }
 
+        function getFlippedPieces(row, col, player) {
+            return getFlippedPiecesForBoard(board, row, col, player);
+        }
+
         function getValidMoves(player) {
-            const moves = [];
-            for (let i = 0; i < BOARD_SIZE; i++) {
-                for (let j = 0; j < BOARD_SIZE; j++) {
-                    if (getFlippedPieces(i, j, player).length > 0) {
-                        moves.push([i, j]);
-                    }
-                }
-            }
-            return moves;
+            return getValidMovesForBoard(board, player);
         }
 
         function countPieces() {
@@ -494,19 +940,15 @@
                 blackInfo.classList.remove('current-turn');
             }
             
-            updateLanguage();
-        }
-
-        function showGameResult() {
-            updateLanguage();
+            updateTurnMessage();
         }
 
         function resetGame() {
             initBoard();
         }
 
-        // ゲーム開始
-        initBoard();
+        // Initialize
+        updateLanguage();
     </script>
 </body>
 </html>
