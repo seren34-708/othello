@@ -477,6 +477,8 @@
         let bgmSource = null;
         let bgmStartTime = 0;
         let bgmPauseTime = 0;
+        let bgmLoopTimeout = null;
+        let currentBGMType = null; // 'menu' or 'game'
 
         const translations = {
             ja: {
@@ -560,6 +562,7 @@
             if (!soundEnabled || !audioContext) return;
             
             stopBGM();
+            currentBGMType = 'game';
             
             // Create a simple melodic loop
             const bgmPattern = [
@@ -576,7 +579,7 @@
             let currentTime = audioContext.currentTime;
             
             function playLoop() {
-                if (!soundEnabled) return;
+                if (!soundEnabled || currentBGMType !== 'game') return;
                 
                 bgmPattern.forEach((note, index) => {
                     const osc = audioContext.createOscillator();
@@ -599,8 +602,8 @@
                 
                 currentTime += bgmPattern.length * 0.3;
                 
-                if (soundEnabled) {
-                    setTimeout(playLoop, bgmPattern.length * 300);
+                if (soundEnabled && currentBGMType === 'game') {
+                    bgmLoopTimeout = setTimeout(playLoop, bgmPattern.length * 300);
                 }
             }
             
@@ -612,6 +615,7 @@
             if (!soundEnabled || !audioContext) return;
             
             stopBGM();
+            currentBGMType = 'menu';
             
             // Lighter, more welcoming melody for menu
             const menuPattern = [
@@ -628,7 +632,7 @@
             let currentTime = audioContext.currentTime;
             
             function playMenuLoop() {
-                if (!soundEnabled) return;
+                if (!soundEnabled || currentBGMType !== 'menu') return;
                 
                 menuPattern.forEach((note, index) => {
                     const osc = audioContext.createOscillator();
@@ -651,8 +655,8 @@
                     currentTime += note.duration;
                 });
                 
-                if (soundEnabled) {
-                    setTimeout(playMenuLoop, menuPattern.reduce((sum, n) => sum + n.duration, 0) * 1000);
+                if (soundEnabled && currentBGMType === 'menu') {
+                    bgmLoopTimeout = setTimeout(playMenuLoop, menuPattern.reduce((sum, n) => sum + n.duration, 0) * 1000);
                 }
             }
             
@@ -660,7 +664,12 @@
         }
 
         function stopBGM() {
-            // BGM is handled by setTimeout, so we just stop creating new notes
+            // Clear any scheduled BGM loops
+            if (bgmLoopTimeout) {
+                clearTimeout(bgmLoopTimeout);
+                bgmLoopTimeout = null;
+            }
+            currentBGMType = null;
         }
 
         // Play piece placement sound
