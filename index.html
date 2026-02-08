@@ -607,6 +607,58 @@
             playLoop();
         }
 
+        // Play menu background music (lighter, more upbeat)
+        function playMenuBGM() {
+            if (!soundEnabled || !audioContext) return;
+            
+            stopBGM();
+            
+            // Lighter, more welcoming melody for menu
+            const menuPattern = [
+                { freq: 659.25, duration: 0.25 }, // E5
+                { freq: 783.99, duration: 0.25 }, // G5
+                { freq: 659.25, duration: 0.25 }, // E5
+                { freq: 523.25, duration: 0.25 }, // C5
+                { freq: 587.33, duration: 0.5 },  // D5
+                { freq: 659.25, duration: 0.25 }, // E5
+                { freq: 523.25, duration: 0.25 }, // C5
+                { freq: 587.33, duration: 0.5 },  // D5
+            ];
+            
+            let currentTime = audioContext.currentTime;
+            
+            function playMenuLoop() {
+                if (!soundEnabled) return;
+                
+                menuPattern.forEach((note, index) => {
+                    const osc = audioContext.createOscillator();
+                    const noteGain = audioContext.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.value = note.freq;
+                    
+                    noteGain.gain.value = 0;
+                    noteGain.gain.setValueAtTime(0, currentTime);
+                    noteGain.gain.linearRampToValueAtTime(0.12, currentTime + 0.01);
+                    noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + note.duration);
+                    
+                    osc.connect(noteGain);
+                    noteGain.connect(bgmGainNode);
+                    
+                    osc.start(currentTime);
+                    osc.stop(currentTime + note.duration);
+                    
+                    currentTime += note.duration;
+                });
+                
+                if (soundEnabled) {
+                    setTimeout(playMenuLoop, menuPattern.reduce((sum, n) => sum + n.duration, 0) * 1000);
+                }
+            }
+            
+            playMenuLoop();
+        }
+
         function stopBGM() {
             // BGM is handled by setTimeout, so we just stop creating new notes
         }
@@ -721,6 +773,8 @@
                 initAudio();
                 if (gameMode) {
                     playBGM();
+                } else {
+                    playMenuBGM();
                 }
             } else {
                 btn.classList.remove('active');
@@ -829,6 +883,9 @@
             showScreen('modeScreen');
             gameMode = null;
             stopBGM();
+            if (soundEnabled) {
+                setTimeout(() => playMenuBGM(), 100);
+            }
         }
 
         function startGame() {
@@ -1206,6 +1263,15 @@
 
         // Initialize
         updateLanguage();
+        
+        // Start menu BGM if sound is enabled
+        document.addEventListener('click', function initSound() {
+            if (soundEnabled && !audioContext) {
+                initAudio();
+                playMenuBGM();
+            }
+            document.removeEventListener('click', initSound);
+        }, { once: true });
     </script>
 </body>
 </html>
