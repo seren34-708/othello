@@ -124,6 +124,37 @@
         .language-toggle {
             text-align: center;
             margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .sound-toggle {
+            padding: 8px 15px;
+            font-size: clamp(0.8em, 2.5vw, 0.9em);
+            font-weight: bold;
+            background: #f0f0f0;
+            color: #666;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sound-toggle.active {
+            background: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+
+        .sound-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .sound-toggle.active:hover {
+            background: #229954;
         }
 
         .lang-btn {
@@ -349,6 +380,7 @@
             <div class="language-toggle">
                 <button class="lang-btn active" onclick="setLanguage('ja')">日本語</button>
                 <button class="lang-btn" onclick="setLanguage('en')">English</button>
+                <button class="sound-toggle active" onclick="toggleSound()" id="soundBtn">🔊 音声ON</button>
             </div>
 
             <h2 id="selectModeTitle">対戦モードを選択</h2>
@@ -438,6 +470,13 @@
         let gameMode = null; // 'pvp' or 'ai'
         let aiDifficulty = 3; // 1-5
         let isAIThinking = false;
+        let soundEnabled = true;
+        let audioContext = null;
+        let bgmGainNode = null;
+        let sfxGainNode = null;
+        let bgmSource = null;
+        let bgmStartTime = 0;
+        let bgmPauseTime = 0;
 
         const translations = {
             ja: {
@@ -463,7 +502,9 @@
                 newGame: '新しいゲーム',
                 backToMenu: 'メニューに戻る',
                 back: '戻る',
-                aiThinking: 'コンピューターが考え中...'
+                aiThinking: 'コンピューターが考え中...',
+                soundOn: '🔊 音声ON',
+                soundOff: '🔇 音声OFF'
             },
             en: {
                 titleMode: '🎮 Othello',
@@ -488,7 +529,9 @@
                 newGame: 'New Game',
                 backToMenu: 'Back to Menu',
                 back: 'Back',
-                aiThinking: 'AI is thinking...'
+                aiThinking: 'AI is thinking...',
+                soundOn: '🔊 Sound ON',
+                soundOff: '🔇 Sound OFF'
             }
         };
 
@@ -497,6 +540,194 @@
             [0, -1],           [0, 1],
             [1, -1],  [1, 0],  [1, 1]
         ];
+
+        // Initialize Audio Context
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                bgmGainNode = audioContext.createGain();
+                bgmGainNode.gain.value = 0.3;
+                bgmGainNode.connect(audioContext.destination);
+                
+                sfxGainNode = audioContext.createGain();
+                sfxGainNode.gain.value = 0.5;
+                sfxGainNode.connect(audioContext.destination);
+            }
+        }
+
+        // Play background music
+        function playBGM() {
+            if (!soundEnabled || !audioContext) return;
+            
+            stopBGM();
+            
+            // Create a simple melodic loop
+            const bgmPattern = [
+                { freq: 523.25, duration: 0.3 }, // C5
+                { freq: 587.33, duration: 0.3 }, // D5
+                { freq: 659.25, duration: 0.3 }, // E5
+                { freq: 587.33, duration: 0.3 }, // D5
+                { freq: 523.25, duration: 0.3 }, // C5
+                { freq: 392.00, duration: 0.3 }, // G4
+                { freq: 440.00, duration: 0.3 }, // A4
+                { freq: 493.88, duration: 0.3 }  // B4
+            ];
+            
+            let currentTime = audioContext.currentTime;
+            
+            function playLoop() {
+                if (!soundEnabled) return;
+                
+                bgmPattern.forEach((note, index) => {
+                    const osc = audioContext.createOscillator();
+                    const noteGain = audioContext.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = note.freq;
+                    
+                    noteGain.gain.value = 0;
+                    noteGain.gain.setValueAtTime(0, currentTime + index * note.duration);
+                    noteGain.gain.linearRampToValueAtTime(0.15, currentTime + index * note.duration + 0.01);
+                    noteGain.gain.exponentialRampToValueAtTime(0.01, currentTime + (index + 1) * note.duration);
+                    
+                    osc.connect(noteGain);
+                    noteGain.connect(bgmGainNode);
+                    
+                    osc.start(currentTime + index * note.duration);
+                    osc.stop(currentTime + (index + 1) * note.duration);
+                });
+                
+                currentTime += bgmPattern.length * 0.3;
+                
+                if (soundEnabled) {
+                    setTimeout(playLoop, bgmPattern.length * 300);
+                }
+            }
+            
+            playLoop();
+        }
+
+        function stopBGM() {
+            // BGM is handled by setTimeout, so we just stop creating new notes
+        }
+
+        // Play piece placement sound
+        function playPlaceSound() {
+            if (!soundEnabled || !audioContext) return;
+            
+            const now = audioContext.currentTime;
+            
+            // Pleasant "click" sound
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.value = 800;
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
+            
+            gain.gain.value = 0.3;
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            
+            osc.connect(gain);
+            gain.connect(sfxGainNode);
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+
+        // Play flip sound
+        function playFlipSound(count) {
+            if (!soundEnabled || !audioContext) return;
+            
+            const now = audioContext.currentTime;
+            
+            // Quick flutter sound based on flip count
+            for (let i = 0; i < Math.min(count, 8); i++) {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.type = 'square';
+                osc.frequency.value = 600 + (i * 50);
+                
+                gain.gain.value = 0.1;
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03 + (i * 0.02));
+                
+                osc.connect(gain);
+                gain.connect(sfxGainNode);
+                
+                osc.start(now + (i * 0.02));
+                osc.stop(now + 0.03 + (i * 0.02));
+            }
+        }
+
+        // Play game over sound
+        function playGameOverSound(won) {
+            if (!soundEnabled || !audioContext) return;
+            
+            stopBGM();
+            
+            const now = audioContext.currentTime;
+            
+            if (won) {
+                // Victory fanfare
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C-E-G-C
+                notes.forEach((freq, i) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.value = 0.2;
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + (i * 0.15));
+                    
+                    osc.connect(gain);
+                    gain.connect(sfxGainNode);
+                    
+                    osc.start(now + (i * 0.15));
+                    osc.stop(now + 0.3 + (i * 0.15));
+                });
+            } else {
+                // Defeat sound
+                const notes = [392, 349.23, 293.66]; // G-F-D descending
+                notes.forEach((freq, i) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.value = 0.15;
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4 + (i * 0.2));
+                    
+                    osc.connect(gain);
+                    gain.connect(sfxGainNode);
+                    
+                    osc.start(now + (i * 0.2));
+                    osc.stop(now + 0.4 + (i * 0.2));
+                });
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            
+            const btn = document.getElementById('soundBtn');
+            const t = translations[currentLanguage];
+            
+            if (soundEnabled) {
+                btn.classList.add('active');
+                btn.textContent = t.soundOn;
+                initAudio();
+                if (gameMode) {
+                    playBGM();
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = t.soundOff;
+                stopBGM();
+            }
+        }
 
         function setLanguage(lang) {
             currentLanguage = lang;
@@ -519,6 +750,10 @@
             document.getElementById('selectModeTitle').textContent = t.selectMode;
             document.getElementById('pvpBtn').innerHTML = t.pvpMode;
             document.getElementById('aiBtn').innerHTML = t.aiMode;
+            
+            // Sound button
+            const soundBtn = document.getElementById('soundBtn');
+            soundBtn.textContent = soundEnabled ? t.soundOn : t.soundOff;
             
             // Difficulty screen
             document.getElementById('titleDifficulty').textContent = t.titleDifficulty;
@@ -593,11 +828,16 @@
         function backToModeSelect() {
             showScreen('modeScreen');
             gameMode = null;
+            stopBGM();
         }
 
         function startGame() {
             showScreen('gameScreen');
             initBoard();
+            if (soundEnabled) {
+                initAudio();
+                playBGM();
+            }
         }
 
         function initBoard() {
@@ -660,6 +900,9 @@
             const flipped = getFlippedPieces(row, col, currentPlayer);
             if (flipped.length === 0) return;
             
+            // Play sound effects
+            playPlaceSound();
+            
             // 石を置く
             board[row][col] = currentPlayer;
             
@@ -667,6 +910,9 @@
             flipped.forEach(([r, c]) => {
                 board[r][c] = currentPlayer;
             });
+            
+            // Play flip sound
+            setTimeout(() => playFlipSound(flipped.length), 100);
             
             // ターン交代
             currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
@@ -680,6 +926,17 @@
                     gameOver = true;
                     renderBoard();
                     updateInfo();
+                    
+                    // Play game over sound
+                    setTimeout(() => {
+                        const { black, white } = countPieces();
+                        if (gameMode === 'ai') {
+                            playGameOverSound(black > white);
+                        } else {
+                            playGameOverSound(true); // Just play victory sound for PvP
+                        }
+                    }, 300);
+                    
                     return;
                 }
             }
